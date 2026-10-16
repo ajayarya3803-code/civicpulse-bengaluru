@@ -70,10 +70,11 @@ The Airflow DAG `civicpulse_pipeline` triggers the Databricks Job and waits for 
 The Databricks Job runs the Bronze, Silver, and Gold notebooks in sequence. Airflow is run locally using Docker Compose.
 
 ## Dashboard
+![CivicPulse Bengaluru Dashboard](dashboard/screenshots/dashboard-overview.png)
 
-The project includes an exported PDF of the **CivicPulse Bengaluru — Civic Infrastructure Analytics** dashboard.
+The project includes an exported PDF of the CivicPulse Bengaluru — Civic Infrastructure Analytics dashboard.
 
-See the `dashboard/` directory for the exported dashboard.
+See the dashboard/ directory for the exported dashboard.
 
 ## Data Quality and Limitations
 
