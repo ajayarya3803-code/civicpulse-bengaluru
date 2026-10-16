@@ -1,0 +1,4 @@
+
+# CivicPulse Bengaluru
+# Airflow dependencies are installed through the Dockerfile.
+# Add project-specific Python dependencies here when needed.

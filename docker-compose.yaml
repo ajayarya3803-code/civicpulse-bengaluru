@@ -1,0 +1,106 @@
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: always
+
+  airflow-apiserver:
+    build: .
+    image: civicpulse-airflow:3.3.2
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment: &airflow-common-env
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+
+      AIRFLOW__API__SECRET_KEY: ${AIRFLOW_API_SECRET_KEY}
+      AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_JWT_SECRET}
+
+      AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-apiserver:8080/execution/
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+    ports:
+      - "8081:8080"
+    command: api-server
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+
+  airflow-scheduler:
+    build: .
+    image: civicpulse-airflow:3.3.2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-apiserver:
+        condition: service_healthy
+    environment:
+      <<: *airflow-common-env
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+    command: scheduler
+    restart: always
+
+  airflow-dag-processor:
+    build: .
+    image: civicpulse-airflow:3.3.2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-apiserver:
+        condition: service_healthy
+    environment:
+      <<: *airflow-common-env
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+    command: dag-processor
+    restart: always
+
+  airflow-init:
+    build: .
+    image: civicpulse-airflow:3.3.2
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *airflow-common-env
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate &&
+        airflow users create \
+          --username admin \
+          --password admin \
+          --firstname CivicPulse \
+          --lastname Admin \
+          --role Admin \
+          --email admin@example.com
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+    restart: "no"
+
+volumes:
+  postgres-db-volume:
